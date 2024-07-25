@@ -1,0 +1,108 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Field {
+    char tag[4]; 
+    int length; 
+    int start; 
+    char *data; 
+};
+
+void decodeField(char *storedData, struct Field *field) {
+    field->data = (char *)malloc(field->length + 1);
+    if (!field->data) {
+        perror("Error allocating memory for field data");
+        exit(1);
+    }
+    strncpy(field->data, storedData + field->start, field->length);
+    field->data[field->length] = '\0';
+}
+
+void printField(struct Field *field) {
+    if (strcmp(field->tag, "000") == 0) {
+        printf("%s\n", field->data); // Control field
+    } else {
+        char *subfield = field->data;
+        printf("%s ", field->tag);
+        while (*subfield) {
+            if (*subfield == 0x1F) { // Subfield starts with delimiter 0x1F
+                printf(" $%c ", *(++subfield));
+                subfield++;
+            } else {
+                putchar(*subfield++);
+            }
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    FILE *file = fopen("osbooks.iso2709", "rb");
+    if (!file) {
+        perror("Error opening file");
+        return 1;
+    }
+
+    while (1) {
+        char header[25];
+        if (fread(header, 1, 24, file) < 24) {
+            if (feof(file)) break;
+            perror("Error reading record header");
+            fclose(file);
+            return 1;
+        }
+        header[24] = '\0';
+
+        int recordSize = atoi(header);
+        if (recordSize <= 0) {
+            perror("Invalid record size");
+            fclose(file);
+            return 1;
+        }
+        char *storedData = (char *)malloc(recordSize - 24);
+        if (!storedData) {
+            perror("Error allocating memory for record");
+            fclose(file);
+            return 1;
+        }
+        if (fread(storedData, 1, recordSize - 24, file) < recordSize - 24) {
+            perror("Error reading the rest of the record");
+            free(storedData);
+            fclose(file);
+            return 1;
+        }
+
+        int directoryLength = 0;
+        while (storedData[directoryLength] != 0x1E) directoryLength++;
+        directoryLength++;
+
+        int numFields = directoryLength / 12;
+        struct Field *fields = (struct Field *)malloc(numFields * sizeof(struct Field));
+        if (!fields) {
+            perror("Error allocating memory for field directory");
+            free(storedData);
+            fclose(file);
+            return 1;
+        }
+
+        for (int i = 0; i < numFields; i++) {
+            strncpy(fields[i].tag, storedData + i * 12, 3);
+            fields[i].tag[3] = '\0';
+            fields[i].length = atoi(strndup(storedData + i * 12 + 3, 4));
+            fields[i].start = atoi(strndup(storedData + i * 12 + 7, 5));
+            decodeField(storedData, &fields[i]);
+        }
+
+        for (int i = 0; i < numFields; i++) {
+            printField(&fields[i]);
+            free(fields[i].data);
+        }
+
+        free(fields);
+        free(storedData);
+    }
+
+    fclose(file);
+    return 0;
+}
