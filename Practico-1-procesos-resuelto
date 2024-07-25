@@ -1,0 +1,151 @@
+Ejercicio 3
+
+#include <stdio.h>
+#include <unistd.h>
+
+
+int main() {
+int pid;
+pid=fork();
+if(pid==0){
+	printf("Soy el proceso hijo, PID %d", getpid());
+}else
+{
+	printf("Soy el proceso padre, PID %d", pid);
+}
+
+//getpid() > Child’s process ID
+//getppid() > Paren’s process ID
+
+}
+
+
+
+
+Ejercicio 4
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+int main() {
+int pid;
+int status;
+pid=fork();
+if(pid==0){
+	printf("Soy el proceso hijo, PID %d\n", getpid());
+}else
+{
+	printf("Soy el proceso padre, PID %d\n", pid);
+}
+ wait(&status);
+ printf("Retorno: %d\n ", status);
+
+}
+
+
+Ejercicio 5
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+int main() {
+int pid;
+int status;
+pid=fork();
+if(pid==0){
+	printf("Soy el proceso hijo, PID %d\n", getpid());
+	while(1) {
+	sleep(1);
+	printf(".\n");
+	}
+	
+}else
+{
+	printf("Soy el proceso padre, PID %d\n", getppid());
+}
+
+ wait(&status);
+ printf("Retorno: %d\n ", status);
+}
+
+
+Ejercicio 6
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+int status;
+
+void sigmanager(int signal) {
+	if (signal == SIGINT){
+		printf("\nSeñal Interrumpida");
+	} 
+	if (signal == SIGTSTP){
+		printf("\nSeñal Suspendida");
+		exit(0);
+	}
+
+
+int main() {
+	printf ("Ctrl+C >Interrumpir | Ctrl+Z > Suspender\n");
+	signal(SIGINT, sigmanager);
+	signal(SIGTSTP, sigmanager);
+	while(1){};
+	printf("-");
+	return 0;
+}
+
+
+
+Ejercicio 7
+
+#include<stdio.h>
+#include<unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+
+// Manejar las señales del proceso hijo
+void sigmanagerchild(int sig) {
+    if (sig == SIGINT) {
+        printf("Se ha recibido la señal para interrumpir: (CTRL + C)\n");
+        printf("Se ha interrumpido el hijo\n");
+    }
+
+    if(sig == SIGTSTP) {
+        printf("Se ha recibido la señal para suspender: (CTRL + Z)\n");
+        printf("Se ha suspendido el hijo.\n");
+        exit(0); // Termina el proceso hijo cuando recibe SIGTSTP
+    }
+}
+
+// Enviar señales al proceso hijo desde el padre
+void sigmanagerdad(int childpid, int signal) {
+    kill(childpid, signal); // Envía la señal 'signal' al proceso con ID 'childpid'
+}
+
+int main() {
+    int psfath, childpid;
+    
+    printf("Suspender > CTRL Z o Interrumpir > CTRL C \n");
+    // Manejar señales para el padre
+    signal(SIGINT, sigmanagerdad);
+    signal(SIGTSTP, sigmanagerdad);
+    psfath = fork();
+    if (psfath > 0) { // Proceso padre
+        wait(NULL); // Espera a que el hijo termine
+        printf("El padre terminó.\n");
+    } else if (psfath == 0) { // Proceso hijo
+        // Configuración de manejadores de señales para el hijo
+        signal(SIGINT, sigmanagerchild);
+        signal(SIGTSTP, sigmanagerchild);
+        
+        // El hijo espera hasta recibir señal
+        while(1){}
+    }
+    return 0;
+}
+
+
