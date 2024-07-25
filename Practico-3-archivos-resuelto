@@ -1,0 +1,98 @@
+Ejercicio 1
+
+#include <stdio.h>
+int main(int argc, char *argv[])
+{
+
+	for (int i = 0; i < argc; i++ ) {
+  		
+  		printf("\n%s\n", argv[i]);
+	} 
+	return 0;
+}
+
+
+Ejercicio 2
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stddef.h>
+#define MAXB 256
+
+int main()
+{
+	ssize_t n;	
+char buffer[MAXB];
+	int file = open ("P3Ej2.txt", O_RDONLY);  
+	while (n=read(file, buffer, MAX) > 0){
+		printf("%s", buffer);
+	}
+	close(file);
+	return 0;
+}
+
+
+Ejercicio 3
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <dirent.h>
+
+int main(int argc, char *argv[]) 
+{
+    struct dirent *n;
+    DIR* dircas = opendir("/");
+    do{
+        n = readdir(dircas);
+        printf("%s\n", n->d_name);
+    }while(n != NULL);
+    closedir(dircas);
+	return 0;
+}
+  
+
+
+Ejercicio 4
+//Ejercicio bichin de las fotos
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+
+#define N 50
+#define READ 256
+
+int main(int argc, char *argv[]){
+    char  archivoOut[N], buff[READ];
+    int n = 0, m = 0;
+    
+    strcpy(archivoOut, argv[1]); 
+    strcat(archivoOut, ".bak"); 
+    
+    printf("in: %s out: %s\n", argv[1], archivoOut);
+    int fd = open(argv[1], O_RDONLY);
+        if(fd<0){
+            printf("Unable to open\n"); //Lectura
+            exit(1);
+        }
+    int fdw = open(archivoOut, O_RDWR|O_CREAT, 0644); //0644 Especial
+        if(fdw<0){
+            printf("Unable to open\n"); //Escritura
+            exit(1);
+        }
+    while ((n = read(fd, buff, READ))>0)
+    {
+        m = write(fdw, buff, n);
+    }
+    close(fd);
+    close(fdw);
+
+    return 0;
+}
