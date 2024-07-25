@@ -1,0 +1,128 @@
+Ejercicio 1
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+
+int main ( int argc , char * argv[]){
+
+       int fd;
+
+       while(open("FIN.txt",O_RDONLY) < 0){ //La función open devuelve un valor negativo (habitualmente -1) si el archivo no existe o no se puede abrir.
+              sleep(1);
+       }
+       printf("El archivo a sido creado correctamente");
+       close(fd);
+       return 0;
+}
+
+
+
+Ejercicio 2
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define LECTURA 5
+
+int main(int argc, char *argv[]) {
+    int fd;
+    char buff[LECTURA] = {""};
+    ssize_t lectura;
+
+    // Bucle infinito para verificar el archivo
+    while (1) {
+        fd = open("FIN.txt", O_RDONLY);
+       
+        if (fd < 0) {
+            printf("No se pudo abrir el archivo. Intentando de nuevo...\n");
+            sleep(3);
+            continue;
+        }
+
+        lectura = read(fd, buff, LECTURA);
+        
+        if (lectura < 0) {
+            printf("Error al leer el archivo.\n");
+            close(fd);
+            exit(1);
+        }
+
+        // Verificar el contenido del archivo
+        if (buff[0] == '0') {
+            printf("El archivo contiene 0. Terminando el programa.\n");
+            close(fd);
+            break;
+        } else if (buff[0] == '1') {
+            printf("El archivo contiene 1. Continuando el programa.\n");
+        } else {
+            printf("El archivo contiene un valor no esperado: %c\n", buff[0]);
+        }
+
+        close(fd);
+        sleep(3); // Esperar 3 segundo antes de verificar de nuevo
+    }
+
+    return 0;
+}
+
+
+Ejercicio 3
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+
+#define MAX 5
+
+int main(int argc, char const *argv[]) {
+    int pid = fork();
+    int fd;
+
+    if (pid == 0) {  // Aqui entramos en el proceso B
+        char a[MAX] = "0";
+        sleep(3); 
+        
+        fd = open("note.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        if (fd < 0) {
+            perror("Error al abrir Archivo");
+            exit(1);
+        }
+        
+        write(fd, a, MAX); //Se escribe 0
+        close(fd);
+        
+        printf("B escribio 0 CONFIRMADOn"); //Mensaje para confirmar escritura
+    } else if (pid > 0) {  // Proceso A
+        int buffer = 1;
+        char aux[MAX];
+
+        while (buffer == 1) {
+            fd = open("note.txt", O_RDONLY);
+            if (fd < 0) {
+                perror("Error al abrir el archivo en el proceso A");
+                exit(1);
+            }
+            
+            read(fd, aux, MAX); //Lectura
+            buffer = atoi(aux);
+            printf("A Leyó '%d' CONFIRMADO.\n", buffer);
+            close(fd);
+            
+            sleep(1);  // Esperar 1 segundo antes de la siguiente lectura
+        }
+        
+        if (buffer == 0) {
+            printf("Proceso A: Encontró un '0' y terminará.\n");
+        }
+    } 
+    return 0;
+}
