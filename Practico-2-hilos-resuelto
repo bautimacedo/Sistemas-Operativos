@@ -1,0 +1,39 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define THREADS  6
+
+void *funcion(void *param)
+{
+	int *idThread = param;
+
+	printf("Soy #%d", *idThread);
+	sleep(6);
+	printf("Chau");
+	sleep(2);
+	pthread_exit(0);
+}
+
+int main()
+{
+  	pthread_t threads[THREADS];
+  	pthread_attr_t attr;
+  	int crear;
+  	int i;
+  
+  	for (i = 0; i < THREADS; i++) 
+    {
+  		  printf("IN\n");
+  		  crear = pthread_create(&threads[i], NULL, funcion, (void *)&i);
+  
+  		if(crear) 
+      {	
+          //Crear=0 > significa que el hilo no compro
+  			  printf("No se pudo crear el hilo. Error: %d\t %d\n", crear, i);
+  			  exit(23);
+  		}
+  	}
+  	pthread_exit(NULL);
+}
