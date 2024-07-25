@@ -1,0 +1,243 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+int fifo(int refString[], int frames[], int frameCount);
+int lru(int refString[], int frames[], int frameCount, int recent[]);
+int opt(int refString[], int frames[], int frameCount);
+
+int main (int argc, char const *argv[]){
+    char buffer[256]; 
+    int frameCount = 0, refString[30];
+    FILE *file;
+    int frameSet3[3] = {10}, frameSet4[4] = {10}, frameSet6[6] = {10};
+    
+    // Lectura del archivo
+    file = fopen(argv[3], "r"); 
+    if(file == NULL){
+        printf("No se pudo abrir\n");
+    } else {
+        printf("Se pudo abrir\n");
+    }
+
+    if(fgets(buffer, sizeof(buffer), file) != NULL) { // Lee la primera linea
+        frameCount = atoi(buffer);
+    } else {
+        printf("Error al leer la primera linea\n");
+        fclose(file);
+    }
+
+    if(fgets(buffer, sizeof(buffer), file) != NULL) {
+        if(strlen(buffer) >= 30) { // Lee la segunda linea
+            for(int i = 0; i < 30; i++){
+                refString[i] = buffer[i] - '0';
+            }
+        } else {
+            printf("La segunda linea no tiene 30 caracteres\n");
+            fclose(file);
+        }
+    } else {
+        printf("Error al leer la segunda linea\n");
+        fclose(file);
+    }
+    fclose(file);  
+    
+    // Impresion del archivo
+    printf("Nro marcos: %d\n", frameCount);
+    for(int i = 0; i < 30; i++){
+        printf("%d\t", refString[i]);
+    }
+    printf("\n");  
+
+    if(strcmp(argv[2], "FIF") == 0){
+        printf("Algoritmo: FIFO\n");
+        switch (frameCount) {
+            case 3:
+                printf("\nLa cantidad de fallos es: %d\n", fifo(refString, frameSet3, frameCount));
+                break;
+            case 4:
+                printf("\nLa cantidad de fallos es: %d\n", fifo(refString, frameSet4, frameCount));
+                break;
+            case 6:
+                printf("\nLa cantidad de fallos es: %d\n", fifo(refString, frameSet6, frameCount));
+                break;
+            default:
+                printf("Cantidad de marcos incorrecta\n");    
+                break;
+        }
+    } else if(strcmp(argv[2], "LRU") == 0){
+        int recent3[3], recent4[4], recent6[6];
+        printf("Algoritmo: LRU\n");
+        switch (frameCount) {
+            case 3:
+                printf("\nLa cantidad de fallos es: %d\n", lru(refString, frameSet3, frameCount, recent3));
+                break;
+            case 4:
+                printf("\nLa cantidad de fallos es: %d\n", lru(refString, frameSet4, frameCount, recent4));
+                break;
+            case 6:
+                printf("\nLa cantidad de fallos es: %d\n", lru(refString, frameSet6, frameCount, recent6));
+                break;
+            default:
+                printf("Cantidad de marcos incorrecta\n");    
+                break;
+        }
+    } else {
+        printf("Algoritmo: OPTIMO\n");
+        switch (frameCount) {
+            case 3:
+                printf("\nLa cantidad de fallos es: %d\n", opt(refString, frameSet3, frameCount));
+                break;
+            case 4:
+                printf("\nLa cantidad de fallos es: %d\n", opt(refString, frameSet4, frameCount));
+                break;
+            case 6:
+                printf("\nLa cantidad de fallos es: %d\n", opt(refString, frameSet6, frameCount));
+                break;
+            default:
+                printf("Cantidad de marcos incorrecta\n");    
+                break;
+        }
+    }
+}
+
+int fifo(int refString[], int frames[], int frameCount){
+    int counter = 0, oldest = 0, limit = frameCount - 1, faults = 0;
+    for(int i = 0; i < 30; i++){
+        printf("\nBuscamos: %d\t", refString[i]);
+        int count = 0;
+        while(refString[i] != frames[counter] && count != limit){
+            if(counter == (frameCount - 1)){
+                counter = 0;
+            } else {
+                counter++;
+            }
+            count++;
+        }
+        if(refString[i] == frames[counter]){
+            printf("\t--> %d\t", refString[i]);
+            printf("En marco: %d\t", counter);
+        } else if(count == limit){
+            frames[oldest] = refString[i];
+            if(oldest == (frameCount - 1)){
+                oldest = 0;
+            } else {
+                oldest++;
+            }
+            printf("\tX-> %d\t", refString[i]);
+            printf("En marco: %d\t", oldest);
+            faults++;
+        }
+    }
+    return faults;
+}
+
+int lru(int refString[], int frames[], int frameCount, int recent[]){
+    int counter = 0, oldest, maxTime = 0, limit = frameCount - 1, faults = 0, filledFrames = 0;
+    for(int i = 0; i < 30; i++){
+        printf("\nBuscamos: %d\t", refString[i]);
+        int count = 0;
+        while(refString[i] != frames[counter] && count != limit){
+            if(counter == (frameCount - 1)){
+                counter = 0;
+            } else {
+                counter++;
+            }
+            count++;
+        }
+        if(refString[i] == frames[counter]){
+            printf("\t--> %d\t", refString[i]);
+            printf("En marco: %d\t", counter);
+            for(int j = 0; j < frameCount; j++){
+                recent[j]++;
+            }
+            recent[counter] = 0;
+        } else {
+            if(filledFrames < frameCount){
+                frames[filledFrames] = refString[i];
+                filledFrames++;
+                for(int j = 0; j < frameCount; j++){
+                    recent[j]++;
+                }
+                recent[filledFrames - 1] = 0;
+                printf("\tX-> %d\t", refString[i]);
+                printf("En marco: %d\t", (filledFrames - 1));
+                faults++;
+            } else {
+                maxTime = 0;
+                for(int j = 0; j < frameCount; j++){
+                    if(maxTime < recent[j]){
+                        maxTime = recent[j];
+                        oldest = j;
+                        recent[j]++;
+                    } else {
+                        recent[j]++;
+                    }
+                }
+                frames[oldest] = refString[i];
+                recent[oldest] = 0;
+                printf("\tX-> %d\t", refString[i]);
+                printf("En marco: %d\t", oldest);
+                faults++;
+            }
+        }
+    }
+    return faults;
+}
+
+int opt(int refString[], int frames[], int frameCount){
+    int occurrences[8] = {0}, id = 0, count0 = 0, count1 = 0, mostFrequent[2];
+    for(int i = 0; i < 30; i++){
+        id = refString[i];
+        occurrences[id]++; // Almacena las veces que se repite cada página
+    }
+    for(int i = 0; i < 8; i++){
+        if(occurrences[i] > count0){
+            mostFrequent[1] = mostFrequent[0];
+            count1 = count0;
+            mostFrequent[0] = i;
+            count0 = occurrences[i];
+        }
+    }
+    frames[0] = mostFrequent[0];
+    frames[1] = mostFrequent[1];
+    printf("\nrep0: %d, rep1: %d\n", count0, count1);
+    printf("En marco0: %d\t En marco1: %d", frames[0], frames[1]);
+    
+    // Misma idea que con fifo pero las dos páginas con más repeticiones ya van a estar cargadas
+    int counter = 0, oldest = 2, limit = frameCount - 1, faults = 0;
+    for(int i = 0; i < 30; i++){
+        printf("\nBuscamos: %d\t", refString[i]);
+        int count = 0;
+        while(refString[i] != frames[counter] && count != limit){
+            if(counter == (frameCount - 1)){
+                counter = 0;
+            } else {
+                counter++;
+            }
+            count++;
+        }
+        if(refString[i] == frames[counter]){
+            printf("\t--> %d\t", refString[i]);
+            printf("En marco: %d\t", counter);
+            if(refString[i] == mostFrequent[0]){
+                count0--;
+            } else if(refString[i] == mostFrequent[1]){
+                count1--;
+            }
+        } else if(count == limit){
+            frames[oldest] = refString[i];
+            if(count0 == 0 && count1 == 0){
+                if(oldest == (frameCount - 1)){
+                    oldest = 0;
+                } else {
+                    oldest++;
+                }
+            }
+            printf("\tX-> %d\t", refString[i]);
+            printf("En marco: %d\t", oldest);
+            faults++;
+        }
+    }
+    return faults;
+}
