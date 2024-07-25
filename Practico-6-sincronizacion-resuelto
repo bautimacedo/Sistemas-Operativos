@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define N 100 // Tamaño del buffer
+#define TRUE 1
+
+sem_t mutex, empty, full; // Declaración de semáforos
+int buffer[N]; // Buffer compartido
+int in = 0; // Índice para insertar ítems
+int out = 0; // Índice para remover ítems
+//sem_wait > Down()
+//sem_post > Up()
+// Funciones de producción y consumo
+int produce_item() { return rand() % 100; }
+void insertar_item(int item) {
+    buffer[in] = item;
+    in = (in + 1) % N;
+}
+
+int remover_item() {
+    int item = buffer[out];
+    out = (out + 1) % N;
+    return item;
+}
+void consume_item(int item) { printf("Consumiendo item: %d\n", item); }
+
+void *producer(void *arg) { //El productor resta el semaforo de 'empty' y suma uno en 'full'
+    int item;
+    while (TRUE) {
+        item = produce_item(); 
+        sem_wait(&empty); // Decrementar empty
+        sem_wait(&mutex); // Entrar a RC
+        insertar_item(item); // Inserta elemento en buffer
+        sem_post(&mutex); // Salir de RC
+        sem_post(&full); // Incrementar full
+    }
+    pthread_exit(NULL);
+}
+
+void *consumer(void *arg) {
+    int item;
+    while (TRUE) {
+        sem_wait(&full); // Decrementar full
+        sem_wait(&mutex); // Entrar a región crítica
+        item = remover_item(); // Remover elemento del buffer
+        sem_post(&mutex); // Salir de región crítica
+        sem_post(&empty); // Incrementar empty
+        consume_item(item); // Consumir elemento
+    }
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t prod_thread, cons_thread;
+
+    // Iniciar semaforos
+    sem_init(&mutex, 0, 1); // Mutex
+    sem_init(&empty, 0, N); // Slots vacios
+    sem_init(&full, 0, 0); // Slots ocupados
+
+    // Crear threads
+    pthread_create(&prod_thread, NULL, producer, NULL);
+    pthread_create(&cons_thread, NULL, consumer, NULL);
+
+    // Esperar a que los threads terminen
+    pthread_join(prod_thread, NULL);
+    pthread_join(cons_thread, NULL);
+
+    // Destruir semáforos al finalizar
+    //sem_destroy(&mutex);
+    //sem_destroy(&empty);
+    //sem_destroy(&full);
+
+    return 0;
+}
